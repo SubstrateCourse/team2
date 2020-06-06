@@ -30,8 +30,8 @@ decl_storage! {
 	// ---------------------------------vvvvvvvvvvvvvv
 	trait Store for Module<T: Trait> as TemplateModule {
 		/// The storage item for our proofs.
-        /// It maps a proof to the user who made the claim and when they made it.
-        Proofs: map hasher(blake2_128_concat) Vec<u8> => (T::AccountId, T::BlockNumber);
+		/// It maps a proof to the user who made the claim and when they made it.
+		Proofs: map hasher(blake2_128_concat) Vec<u8> => (T::AccountId, T::BlockNumber);
 	}
 }
 
@@ -39,8 +39,8 @@ decl_storage! {
 decl_event!(
 	pub enum Event<T> where AccountId = <T as system::Trait>::AccountId {
 		/// Event emitted when a proof has been claimed.
-        ClaimCreated(AccountId, Vec<u8>),
-        /// Event emitted when a claim is revoked by the owner.
+		ClaimCreated(AccountId, Vec<u8>),
+		/// Event emitted when a claim is revoked by the owner.
 		ClaimRevoked(AccountId, Vec<u8>),
 		/// Event emitted when a proof has been transfered from an owner to another receiver
 		ClaimTransfered(AccountId, Vec<u8>),
@@ -51,10 +51,10 @@ decl_event!(
 decl_error! {
 	pub enum Error for Module<T: Trait> {
 		/// This proof has already been claimed
-        ProofAlreadyClaimed,
-        /// The proof does not exist, so it cannot be revoked
-        NoSuchProof,
-        /// The proof is claimed by another account, so caller can't revoke it
+		ProofAlreadyClaimed,
+		/// The proof does not exist, so it cannot be revoked
+		NoSuchProof,
+		/// The proof is claimed by another account, so caller can't revoke it
 		NotProofOwner,
 		/// The proof hash cannot exceed the bound
 		ProofExceedBound,
