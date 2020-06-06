@@ -8,6 +8,9 @@ name = 'pallet-template'
 repository = 'https://github.com/substrate-developer-hub/substrate-node-template/'
 version = '2.0.0-rc2'
 
+[dependencies]
+hex = { version = "0.4", default-features = false }
+
 [dependencies.codec]
 default-features = false
 features = ['derive']
@@ -44,10 +47,16 @@ git = 'https://github.com/paritytech/substrate.git'
 tag = 'v2.0.0-rc2'
 version = '2.0.0-rc2'
 
+[dependencies.sp-std]
+git = 'https://github.com/paritytech/substrate.git'
+default-features = false
+tag = 'v2.0.0-rc2'
+
 [features]
 default = ['std']
 std = [
     'codec/std',
     'frame-support/std',
     'frame-system/std',
+    'sp-std/std',
 ]
