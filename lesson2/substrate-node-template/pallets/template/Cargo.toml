@@ -50,4 +50,10 @@ std = [
     'codec/std',
     'frame-support/std',
     'frame-system/std',
+    'sp-std/std',
 ]
+
+[dependencies.sp-std]
+git = 'https://github.com/paritytech/substrate.git'
+default-features = false
+tag = 'v2.0.0-rc2'
