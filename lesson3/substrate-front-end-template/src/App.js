@@ -1,39 +1,42 @@
-import React, { useState, createRef } from 'react';
-import { Container, Dimmer, Loader, Grid, Sticky } from 'semantic-ui-react';
+/** @format */
 
-import 'semantic-ui-css/semantic.min.css';
-import { SubstrateContextProvider, useSubstrate } from './substrate-lib';
-import { DeveloperConsole } from './substrate-lib/components';
+import React, { useState, createRef } from "react";
+import { Container, Dimmer, Loader, Grid, Sticky } from "semantic-ui-react";
 
-import AccountSelector from './AccountSelector';
-import Balances from './Balances';
-import BlockNumber from './BlockNumber';
-import Events from './Events';
-import Interactor from './Interactor';
-import Metadata from './Metadata';
-import NodeInfo from './NodeInfo';
-import TemplateModule from './TemplateModule';
-import Transfer from './Transfer';
-import Upgrade from './Upgrade';
+import "semantic-ui-css/semantic.min.css";
+import { SubstrateContextProvider, useSubstrate } from "./substrate-lib";
+import { DeveloperConsole } from "./substrate-lib/components";
 
-function Main () {
+import AccountSelector from "./AccountSelector";
+import Balances from "./Balances";
+import BlockNumber from "./BlockNumber";
+import Events from "./Events";
+import Interactor from "./Interactor";
+import Metadata from "./Metadata";
+import NodeInfo from "./NodeInfo";
+import TemplateModule from "./TemplateModule";
+import PoeModule from "./PoeModule";
+import Transfer from "./Transfer";
+import Upgrade from "./Upgrade";
+
+function Main() {
   const [accountAddress, setAccountAddress] = useState(null);
   const { apiState, keyring, keyringState } = useSubstrate();
   const accountPair =
     accountAddress &&
-    keyringState === 'READY' &&
+    keyringState === "READY" &&
     keyring.getPair(accountAddress);
 
-  const loader = text => (
+  const loader = (text) => (
     <Dimmer active>
       <Loader size='small'>{text}</Loader>
     </Dimmer>
   );
 
-  if (apiState === 'ERROR') return loader('Error connecting to the blockchain');
-  else if (apiState !== 'READY') return loader('Connecting to the blockchain');
+  if (apiState === "ERROR") return loader("Error connecting to the blockchain");
+  else if (apiState !== "READY") return loader("Connecting to the blockchain");
 
-  if (keyringState !== 'READY') {
+  if (keyringState !== "READY") {
     return loader(
       "Loading accounts (please review any extension's authorization)"
     );
@@ -68,6 +71,9 @@ function Main () {
           <Grid.Row>
             <TemplateModule accountPair={accountPair} />
           </Grid.Row>
+          <Grid.Row>
+            <PoeModule accountPair={accountPair} />
+          </Grid.Row>
         </Grid>
         <DeveloperConsole />
       </Container>
@@ -75,7 +81,7 @@ function Main () {
   );
 }
 
-export default function App () {
+export default function App() {
   return (
     <SubstrateContextProvider>
       <Main />

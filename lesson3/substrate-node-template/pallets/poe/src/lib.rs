@@ -1,14 +1,14 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
 /// A FRAME pallet proof of existence with necessary imports
-
 use frame_support::{
-	decl_module, decl_storage, decl_event, decl_error, dispatch, ensure,
-	traits::{Get},
+	decl_error, decl_event, decl_module, decl_storage, dispatch, ensure,
+	traits::Get,
+	traits::{Currency, ExistenceRequirement},
 };
 use frame_system::{self as system, ensure_signed};
-use sp_std::prelude::*;
 use sp_runtime::traits::StaticLookup;
+use sp_std::prelude::*;
 
 #[cfg(test)]
 mod mock;
@@ -19,6 +19,7 @@ mod tests;
 /// The pallet's configuration trait.
 pub trait Trait: system::Trait {
 	// Add other types and constants required to configure this pallet.
+	type Currency: Currency<Self::AccountId>;
 
 	/// The overarching event type.
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
@@ -27,6 +28,8 @@ pub trait Trait: system::Trait {
 	type MaxClaimLength: Get<u32>;
 }
 
+type BalanceOf<T> = <<T as Trait>::Currency as Currency<<T as system::Trait>::AccountId>>::Balance;
+
 // This pallet's storage items.
 decl_storage! {
 	// It is important to update your storage name so that your pallet's
@@ -34,14 +37,21 @@ decl_storage! {
 	// ---------------------------------vvvvvvvvvvvvvv
 	trait Store for Module<T: Trait> as TemplateModule {
 		Proofs get(fn proofs): map hasher(blake2_128_concat) Vec<u8> => (T::AccountId, T::BlockNumber);
+		ProofsOfPrice get(fn proofsprice): map hasher(blake2_128_concat) Vec<u8> => BalanceOf<T>;
 	}
 }
 
 // The pallet's events
 decl_event!(
-	pub enum Event<T> where AccountId = <T as system::Trait>::AccountId {
+	pub enum Event<T>
+	where
+		AccountId = <T as system::Trait>::AccountId,
+		Price = BalanceOf<T>,
+	{
 		ClaimCreated(AccountId, Vec<u8>),
 		ClaimRevoked(AccountId, Vec<u8>),
+		ClaimPriceCreated(AccountId, Vec<u8>, Price),
+		ClaimBought(AccountId, AccountId, Vec<u8>, Price), //buyer owner
 	}
 );
 
@@ -52,6 +62,10 @@ decl_error! {
 		ClaimNotExist,
 		NotClaimOwner,
 		ProofTooLong,
+		InsufficientBalance,
+		BidTooLow,
+		PriceAlreadySet,
+		ClaimPriceNotSet
 	}
 }
 
@@ -115,6 +129,49 @@ decl_module! {
 			let dest = T::Lookup::lookup(dest)?;
 
 			Proofs::<T>::insert(&claim, (dest, system::Module::<T>::block_number()));
+
+			Ok(())
+		}
+
+		#[weight = 0]
+		pub fn create_claim_price(origin, claim: Vec<u8>, price: BalanceOf<T>) -> dispatch::DispatchResult {
+			let sender = ensure_signed(origin)?;
+
+			ensure!(Proofs::<T>::contains_key(&claim), Error::<T>::ClaimNotExist);
+
+			let (owner, _block_number) = Proofs::<T>::get(&claim);
+
+			ensure!(owner == sender, Error::<T>::NotClaimOwner);
+
+			ensure!(!ProofsOfPrice::<T>::contains_key(&claim), Error::<T>::PriceAlreadySet);
+
+			ProofsOfPrice::<T>::insert(&claim, price);
+
+
+			Self::deposit_event(RawEvent::ClaimPriceCreated(sender, claim, price));
+
+			Ok(())
+		}
+
+		#[weight = 0]
+		pub fn buy_claim(origin, claim: Vec<u8>, price: BalanceOf<T>) -> dispatch::DispatchResult {
+			let sender = ensure_signed(origin)?;
+
+			ensure!(Proofs::<T>::contains_key(&claim), Error::<T>::ClaimNotExist);
+			ensure!(ProofsOfPrice::<T>::contains_key(&claim), Error::<T>::ClaimPriceNotSet);
+
+			let std_price = ProofsOfPrice::<T>::get(&claim);
+			let (owner, _) = Proofs::<T>::get(&claim);
+
+			ensure!(price >= std_price, Error::<T>::BidTooLow);
+
+			T::Currency::transfer(&sender, &owner, price, ExistenceRequirement::KeepAlive)?;
+
+			Proofs::<T>::insert(&claim, (&sender, system::Module::<T>::block_number()));
+			ProofsOfPrice::<T>::remove(&claim);
+
+			Self::deposit_event(RawEvent::ClaimBought(sender, owner, claim, price));
+
 
 			Ok(())
 		}
