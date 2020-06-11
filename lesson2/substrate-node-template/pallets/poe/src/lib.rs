@@ -8,7 +8,9 @@
 
 /// For more guidance on Substrate FRAME, see the example pallet
 /// https://github.com/paritytech/substrate/blob/master/frame/example/src/lib.rs
-use frame_support::{decl_error, decl_event, decl_module, decl_storage, ensure, StorageMap};
+use frame_support::{
+	decl_error, decl_event, decl_module, decl_storage, dispatch, ensure, traits::Get, StorageMap,
+};
 use frame_system::{self as system, ensure_signed};
 
 use sp_std::vec::Vec;
@@ -24,6 +26,7 @@ pub trait Trait: system::Trait {
 
 	/// The overarching event type.
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
+	type MaxClaimLength: Get<u32>;
 }
 
 // This pallet's storage items.
@@ -31,11 +34,11 @@ decl_storage! {
 	// It is important to update your storage name so that your pallet's
 	// storage items are isolated from other pallets.
 	// ---------------------------------vvvvvvvvvvvvvv
-	trait Store for Module<T: Trait> as TemplateModule {
+	trait Store for Module<T: Trait> as PoeModule {
 		// Just a dummy storage item.
 		// Here we are declaring a StorageValue, `Something` as a Option<u32>
 		// `get(fn something)` is the default getter which returns either the stored `u32` or `None` if nothing stored
-		Proofs: map hasher(blake2_128_concat) Vec<u8> => (T::AccountId, T::BlockNumber);
+		Proofs get(fn proofs): map hasher(blake2_128_concat) Vec<u8> => (T::AccountId, T::BlockNumber);
 	}
 }
 
@@ -57,7 +60,7 @@ decl_error! {
 		ProofAlreadyClaimed,
 		NoSuchProof,
 		NotProofOwner,
-		OutOfBounds
+		ProofTooLong
 	}
 }
 
@@ -78,21 +81,25 @@ decl_module! {
 		/// function that can be called by the external world as an extrinsics call
 		/// takes a parameter of the type `AccountId`, stores it, and emits an event
 		#[weight = 0]
-		pub fn create_claim(origin, proof: Vec<u8>) {
-			// Check it was signed and get the signer. See also: ensure_root and ensure_none
+		pub fn create_claim(origin, proof: Vec<u8>) -> dispatch::DispatchResult {
+			// Check it was signed and get the signer. See aso: ensure_root and ensure_none
 			let who = ensure_signed(origin)?;
 
 			ensure!(!Proofs::<T>::contains_key(&proof), Error::<T>::ProofAlreadyClaimed);
 
-			let current_block = <system::Module<T>>::block_number();
+			ensure!(T::MaxClaimLength::get() >= proof.len() as u32, Error::<T>::ProofTooLong);
+
+			let current_block = system::Module::<T>::block_number();
 			Proofs::<T>::insert(&proof, (&who, current_block));
 			Self::deposit_event(RawEvent::ClaimCreated(who, proof));
+
+			Ok(())
 		}
 
 		/// Another dummy entry point.
 		/// takes no parameters, attempts to increment storage value, and possibly throws an error
 		#[weight = 0]
-		pub fn revoke_claim(origin, proof: Vec<u8>) {
+		pub fn revoke_claim(origin, proof: Vec<u8>) -> dispatch::DispatchResult {
 			// Check it was signed and get the signer. See also: ensure_root and ensure_none
 			let who = ensure_signed(origin)?;
 
@@ -102,20 +109,24 @@ decl_module! {
 			Proofs::<T>::remove(&proof);
 
 			Self::deposit_event(RawEvent::ClaimRevoked(who, proof));
+
+			Ok(())
 		}
 
 		#[weight = 0]
-		pub fn transfer_claim(origin, proof: Vec<u8>, to: T::AccountId) {
+		pub fn transfer_claim(origin, proof: Vec<u8>, to: T::AccountId) -> dispatch::DispatchResult {
 			// Check it was signed and get the signer. See also: ensure_root and ensure_none
 			let who = ensure_signed(origin)?;
 
 			ensure!(Proofs::<T>::contains_key(&proof), Error::<T>::NoSuchProof);
-			let (owner, block) = Proofs::<T>::get(&proof);
+			let (owner, _) = Proofs::<T>::get(&proof);
 			ensure!(who == owner, Error::<T>::NotProofOwner);
 			Proofs::<T>::remove(&proof);
-			Proofs::<T>::insert(&proof, (&to, block));
+			Proofs::<T>::insert(&proof, (&to, system::Module::<T>::block_number()));
 
 			Self::deposit_event(RawEvent::ClaimTransfered(who, to, proof));
+
+			Ok(())
 		}
 	}
 }
