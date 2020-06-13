@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Form, Input, Grid, Card, Statistic } from 'semantic-ui-react';
+import { Form, Input, Grid } from 'semantic-ui-react';
 
 import { useSubstrate } from './substrate-lib';
 import { TxButton } from './substrate-lib/components';
@@ -21,10 +21,8 @@ function Main (props) {
   useEffect(() => {
     let unsubscribe;
     api.query.poeModule.proofs(digest, (result) => {
-      console.log(result);
       setOwner(result[0].toString());
       setBlockNumber(result[1].toNumber());
-
     }).then(unsub => {
       unsubscribe = unsub;
     })
@@ -34,7 +32,7 @@ function Main (props) {
   }, [digest, api.query.poeModule]);
 
   const handleFileChosen = (file) => {
-    let fileReader = new FileReader();
+    const fileReader = new FileReader();
 
     const bufferToDigest = () => {
       const content = Array.from(new Uint8Array(fileReader.result))
@@ -43,16 +41,16 @@ function Main (props) {
 
       const hash = blake2AsHex(content, 256);
       setDigest(hash);
-    }
+    };
 
     fileReader.onloadend = bufferToDigest;
 
     fileReader.readAsArrayBuffer(file);
-  }
+  };
 
   const handleDestChange = (dest) => {
     setDest(dest);
-  }
+  };
 
   return (
     <Grid.Column width={8}>
