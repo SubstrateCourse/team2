@@ -42,6 +42,8 @@ decl_event!(
 	pub enum Event<T> where AccountId = <T as system::Trait>::AccountId {
 		ClaimCreated(AccountId, Vec<u8>),
 		ClaimRevoked(AccountId, Vec<u8>),
+		/// Event emitted when a proof has been transfered from an owner to another receiver
+		ClaimTransfered(AccountId, Vec<u8>),
 	}
 );
 
@@ -115,6 +117,9 @@ decl_module! {
 			let dest = T::Lookup::lookup(dest)?;
 
 			Proofs::<T>::insert(&claim, (dest, system::Module::<T>::block_number()));
+
+			// Emit an event that the claim was transfered
+            Self::deposit_event(RawEvent::ClaimTransfered(sender, claim));
 
 			Ok(())
 		}
