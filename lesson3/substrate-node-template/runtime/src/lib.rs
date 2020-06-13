@@ -33,7 +33,7 @@ pub use balances::Call as BalancesCall;
 pub use sp_runtime::{Permill, Perbill};
 pub use frame_support::{
 	construct_runtime, parameter_types, StorageValue,
-	traits::{KeyOwnerProofSystem, Randomness},
+	traits::{KeyOwnerProofSystem, Randomness, Currency},
 	weights::{
 		Weight, IdentityFee,
 		constants::{BlockExecutionWeight, ExtrinsicBaseWeight, RocksDbWeight, WEIGHT_PER_SECOND},
@@ -267,6 +267,7 @@ impl poe::Trait for Runtime {
 	
 	// 附加题答案
 	type MaxClaimLength = MaxClaimLength;
+	type Currency = balances::Module<Runtime>;
 }
 
 construct_runtime!(

@@ -24,4 +24,6 @@
 </p>
 
 #### Question 3
-**TBD**
+<p align="center">
+  <img src="./media/purchase_claim_success.png">
+</p>
