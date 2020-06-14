@@ -212,6 +212,7 @@ impl grandpa::Trait for Runtime {
 
 parameter_types! {
 	pub const MinimumPeriod: u64 = SLOT_DURATION / 2;
+    pub const MaxClaimLength: u32 = 6;
 }
 
 impl timestamp::Trait for Runtime {
@@ -257,6 +258,11 @@ impl template::Trait for Runtime {
 	type Event = Event;
 }
 
+impl poe::Trait for Runtime {
+    type Event = Event;
+    type MaxClaimLength = MaxClaimLength;
+}
+
 construct_runtime!(
 	pub enum Runtime where
 		Block = Block,
@@ -272,7 +278,8 @@ construct_runtime!(
 		TransactionPayment: transaction_payment::{Module, Storage},
 		Sudo: sudo::{Module, Call, Config<T>, Storage, Event<T>},
 		// Used for the module template in `./template.rs`
-		TemplateModule: template::{Module, Call, Storage, Event<T>},
+	    TemplateModule: template::{Module, Call, Storage, Event<T>},
+            PoeModule: poe::{Module, Call, Storage, Event<T>},
 	}
 );
 
