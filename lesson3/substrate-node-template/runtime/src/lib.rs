@@ -259,14 +259,15 @@ impl template::Trait for Runtime {
 
 // 附加题答案
 parameter_types! {
-	pub const MaxClaimLength: u32 = 6;
+	pub const MinLength: usize = 1;
+	pub const MaxLength: usize = 1024;
 }
 
 impl poe::Trait for Runtime {
 	type Event = Event;
-	
-	// 附加题答案
-	type MaxClaimLength = MaxClaimLength;
+	type Currency = Balances;
+	type MinLength = MinLength;
+	type MaxLength = MaxLength;
 }
 
 construct_runtime!(
