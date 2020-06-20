@@ -23,6 +23,7 @@ pub trait Trait: system::Trait {
 	/// The overarching event type.
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 	type MaxClaimLength: Get<u32>;
+	type MaxMemoLength: Get<usize>;
 	type Currency: Currency<Self::AccountId>;
 }
 
@@ -34,7 +35,7 @@ decl_storage! {
 	// storage items are isolated from other pallets.
 	// ---------------------------------vvvvvvvvvvvvvv
 	trait Store for Module<T: Trait> as TemplateModule {
-		Proofs get(fn proofs): map hasher(blake2_128_concat) Vec<u8> => (T::AccountId, T::BlockNumber);
+		Proofs get(fn proofs): map hasher(blake2_128_concat) Vec<u8> => (T::AccountId, T::BlockNumber, Vec<u8>);
 		Prices get(fn prices): map hasher(blake2_128_concat) Vec<u8> => BalanceOf<T>;
 	}
 }
@@ -60,6 +61,7 @@ decl_error! {
 		CannotBuySelfOwnedClaim,
 		ClaimPriceNotSet,
 		OfferPriceTooLow,
+		MemoTooLong,
 	}
 }
 
@@ -77,14 +79,16 @@ decl_module! {
 		fn deposit_event() = default;
 
 		#[weight = 0]
-		pub fn create_claim(origin, claim: Vec<u8>) -> dispatch::DispatchResult {
+		pub fn create_claim(origin, claim: Vec<u8>, memo: Vec<u8>) -> dispatch::DispatchResult {
 			let sender = ensure_signed(origin)?;
 
 			ensure!(!Proofs::<T>::contains_key(&claim), Error::<T>::ProofAlreadyExist);
 
 			ensure!(T::MaxClaimLength::get() >= claim.len() as u32, Error::<T>::ProofTooLong);
 
-			Proofs::<T>::insert(&claim, (sender.clone(), system::Module::<T>::block_number()));
+			ensure!(T::MaxMemoLength::get() >= memo.len(), Error::<T>::MemoTooLong);
+
+			Proofs::<T>::insert(&claim, (sender.clone(), system::Module::<T>::block_number(), memo));
 
 			Self::deposit_event(RawEvent::ClaimCreated(sender, claim));
 
@@ -97,7 +101,7 @@ decl_module! {
 
 			ensure!(Proofs::<T>::contains_key(&claim), Error::<T>::ClaimNotExist);
 
-			let (owner, _block_number) = Proofs::<T>::get(&claim);
+			let (owner, _block_number, _) = Proofs::<T>::get(&claim);
 
 			ensure!(owner == sender, Error::<T>::NotClaimOwner);
 
@@ -114,13 +118,13 @@ decl_module! {
 
 			ensure!(Proofs::<T>::contains_key(&claim), Error::<T>::ClaimNotExist);
 
-			let (owner, _block_number) = Proofs::<T>::get(&claim);
+			let (owner, _block_number, memo) = Proofs::<T>::get(&claim);
 
 			ensure!(owner == sender, Error::<T>::NotClaimOwner);
 
 			let dest = T::Lookup::lookup(dest)?;
 
-			Proofs::<T>::insert(&claim, (dest.clone(), system::Module::<T>::block_number()));
+			Proofs::<T>::insert(&claim, (dest.clone(), system::Module::<T>::block_number(), memo));
 
 			// Emit an event that the claim was transfered
             Self::deposit_event(RawEvent::ClaimTransfered(sender, dest, claim));
@@ -134,7 +138,7 @@ decl_module! {
 
 			ensure!(Proofs::<T>::contains_key(&claim), Error::<T>::ClaimNotExist);
 
-			let (owner, _block_number) = Proofs::<T>::get(&claim);
+			let (owner, _block_number, _) = Proofs::<T>::get(&claim);
 
 			ensure!(owner == sender, Error::<T>::NotClaimOwner);
 
@@ -152,7 +156,7 @@ decl_module! {
 
 			ensure!(Proofs::<T>::contains_key(&claim), Error::<T>::ClaimNotExist);
 
-			let (owner, _block_number) = Proofs::<T>::get(&claim);
+			let (owner, _block_number, memo) = Proofs::<T>::get(&claim);
 
 			ensure!(owner != sender, Error::<T>::CannotBuySelfOwnedClaim);
 
@@ -164,7 +168,7 @@ decl_module! {
 
 			T::Currency::transfer(&sender, &owner, proof_price, ExistenceRequirement::KeepAlive)?;
 
-			Proofs::<T>::insert(&claim, (sender.clone(), system::Module::<T>::block_number()));
+			Proofs::<T>::insert(&claim, (sender.clone(), system::Module::<T>::block_number(), memo));
 
 			// Emit an event that the claim price was set
             Self::deposit_event(RawEvent::ClaimPurchased(sender, claim));

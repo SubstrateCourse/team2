@@ -12,6 +12,7 @@ function Main (props) {
   // The transaction submission status
   const [status, setStatus] = useState('');
   const [digest, setDigest] = useState('');
+  const [memo, setMemo] = useState('');
   const [owner, setOwner] = useState('');
   const [blockNumber, setBlockNumber] = useState(0);
   const [formState, setFormState] = useState({ addressTo: null });
@@ -46,6 +47,14 @@ function Main (props) {
     fileReader.readAsArrayBuffer(file);
   };
 
+  const handleMemoChange = (memo) => {
+    const content = Array.from(new Uint8Array(memo))
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('');
+    const hash = blake2AsHex(content, 256);
+    setMemo(hash);
+  };
+
   return (
     <Grid.Column width={8}>
       <h1>Proof of Existence Module</h1>
@@ -59,6 +68,16 @@ function Main (props) {
           />
         </Form.Field>
         <Form.Field>
+          Comment:
+          <Input
+            type='input'
+            id='memo'
+            lable='Memo'
+            onChange={(e) => handleMemoChange(e.value)}
+          />
+        </Form.Field>
+
+        <Form.Field>
           <TxButton
             accountPair={accountPair}
             label='Create Claim'
@@ -67,7 +86,7 @@ function Main (props) {
             attrs={{
               palletRpc: 'poeModule',
               callable: 'createClaim',
-              inputParams: [digest],
+              inputParams: [digest, memo],
               paramFields: [true]
             }}
           />
