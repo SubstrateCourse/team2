@@ -18,6 +18,7 @@ decl_storage! {
 		pub Kitties get(fn kitties): map hasher(blake2_128_concat) u32 => Option<Kitty>;
 		/// Stores the total number of kitties. i.e. the next kitty index
 		pub KittiesCount get(fn kitties_count): u32;
+		pub KittiesOwner get(fn kitties_owner): map hasher(blake2_128_concat) u32 => T::AccountId;
 
 		/// Get kitty ID by account ID and user kitty index
 		pub OwnedKitties get(fn owned_kitties): map hasher(blake2_128_concat) (T::AccountId, u32) => u32;
@@ -31,7 +32,8 @@ decl_error! {
 		KittiesCountOverflow,
 		InvalidKittyId,
 		RequireDifferentParent,
-		KittyNotExist
+		KittyNotExist,
+		NotKittyOwner,
 	}
 }
 
@@ -52,7 +54,8 @@ decl_module! {
 			let kitty = Kitty(dna);
 
 			// 作业：补完剩下的部分
-			Self::insert_kitty(sender, kitty_id, kitty);
+			Self::insert_kitty(&sender, &kitty_id, &kitty);
+			KittiesOwner::<T>::insert(&kitty_id, &sender);
 
 			Ok(())
 		}
@@ -72,16 +75,19 @@ decl_module! {
 
 			ensure!(Kitties::contains_key(&kitty_id), Error::<T>::KittyNotExist);
 
-			let (owner, _block_number) = Proofs::<T>::get(&claim);
+			let owner = KittiesOwner::<T>::get(&kitty_id);
 
-			ensure!(owner == sender, Error::<T>::NotClaimOwner);
+			ensure!(owner == sender, Error::<T>::NotKittyOwner);
 
 			let dest = T::Lookup::lookup(dest)?;
 
-			Proofs::<T>::insert(&claim, (dest.clone(), system::Module::<T>::block_number()));
-
-			// Emit an event that the claim was transfered
-            Self::deposit_event(RawEvent::ClaimTransfered(sender, dest, claim));
+			let owned_kitties_count_dest = Self::owned_kitties_count(&dest);
+			let owned_kitties_count_sender = Self::owned_kitties_count(&sender);
+			OwnedKitties::<T>::remove((&sender, owned_kitties_count_sender));
+			OwnedKittiesCount::<T>::insert(&sender, owned_kitties_count_sender - 1);
+			OwnedKitties::<T>::insert((&dest, owned_kitties_count_dest), &kitty_id);
+			OwnedKittiesCount::<T>::insert(&dest, owned_kitties_count_dest + 1);
+			KittiesOwner::<T>::insert(&kitty_id, &dest);
 
 			Ok(())
 		}
@@ -112,7 +118,7 @@ impl<T: Trait> Module<T> {
 		Ok(kitty_id)
 	}
 
-	fn insert_kitty(owner: T::AccountId, kitty_id: u32, kitty: Kitty) {
+	fn insert_kitty(owner: &T::AccountId, kitty_id: &u32, kitty: &Kitty) {
 		// 作业：完成方法
 		Kitties::insert(kitty_id, kitty);
 		KittiesCount::put(kitty_id + 1);
@@ -142,7 +148,7 @@ impl<T: Trait> Module<T> {
 			new_dna[i] = combine_dna(kitty1_dna[i], kitty2_dna[i], selector[i]);
 		}
 
-		Self::insert_kitty(sender, kitty_id, Kitty(new_dna));
+		Self::insert_kitty(&sender, &kitty_id, &Kitty(new_dna));
 
 		Ok(())
 	}
