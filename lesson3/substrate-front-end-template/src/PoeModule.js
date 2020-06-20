@@ -57,6 +57,33 @@ function Main (props) {
 
   return (
     <Grid.Column width={8}>
+      <h1>Proof of Existence - User Info</h1>
+      <Form>
+        <Form.Field>
+          <Input
+            type='text'
+            placeholder='address'
+            label="User Address"
+            state="addressTo"
+            onChange={ (_, data) =>
+              setFormState(prev => ({ ...prev, [data.state]: data.value })) }
+          />
+        </Form.Field>
+        <Form.Field style={{ textAlign: 'center' }}>
+          <TxButton
+            label='Query User Doc'
+            type='UNSIGNED-TX'
+            setStatus={setStatus}
+            attrs={{
+              palletRpc: 'poeModule',
+              callable: 'queryUserDoc',
+              inputParams: [addressTo],
+              paramFields: [true]
+            }}
+          />
+        </Form.Field>
+      </Form>
+
       <h1>Proof of Existence Module</h1>
       <Form>
         <Form.Field>

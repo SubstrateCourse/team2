@@ -37,6 +37,7 @@ decl_storage! {
 	trait Store for Module<T: Trait> as TemplateModule {
 		Proofs get(fn proofs): map hasher(blake2_128_concat) Vec<u8> => (T::AccountId, T::BlockNumber, Vec<u8>);
 		Prices get(fn prices): map hasher(blake2_128_concat) Vec<u8> => BalanceOf<T>;
+		Accounts get(fn accounts): map hasher(blake2_128_concat) T::AccountId => Vec<(Vec<u8>, T::BlockNumber, Vec<u8>)>;
 	}
 }
 
@@ -88,7 +89,9 @@ decl_module! {
 
 			ensure!(T::MaxMemoLength::get() >= memo.len(), Error::<T>::MemoTooLong);
 
-			Proofs::<T>::insert(&claim, (sender.clone(), system::Module::<T>::block_number(), memo));
+			Proofs::<T>::insert(&claim, (sender.clone(), system::Module::<T>::block_number(), &memo));
+
+			Accounts::<T>::get(&sender).push((claim.clone(), system::Module::<T>::block_number(), memo.clone()));
 
 			Self::deposit_event(RawEvent::ClaimCreated(sender, claim));
 
@@ -107,6 +110,10 @@ decl_module! {
 
 			Proofs::<T>::remove(&claim);
 
+			if Self::accounts(&sender).is_empty() {
+				Accounts::<T>::remove(sender.clone());
+			}
+
 			Self::deposit_event(RawEvent::ClaimRevoked(sender, claim));
 
 			Ok(())
@@ -124,7 +131,10 @@ decl_module! {
 
 			let dest = T::Lookup::lookup(dest)?;
 
-			Proofs::<T>::insert(&claim, (dest.clone(), system::Module::<T>::block_number(), memo));
+			Proofs::<T>::insert(&claim, (dest.clone(), system::Module::<T>::block_number(), &memo));
+
+			Accounts::<T>::get(&sender).retain(|x| *x != (claim.clone(), _block_number, memo.clone()));
+			Accounts::<T>::get(&dest).push((claim.clone(), system::Module::<T>::block_number(), memo.clone()));
 
 			// Emit an event that the claim was transfered
             Self::deposit_event(RawEvent::ClaimTransfered(sender, dest, claim));
@@ -168,7 +178,10 @@ decl_module! {
 
 			T::Currency::transfer(&sender, &owner, proof_price, ExistenceRequirement::KeepAlive)?;
 
-			Proofs::<T>::insert(&claim, (sender.clone(), system::Module::<T>::block_number(), memo));
+			Proofs::<T>::insert(&claim, (sender.clone(), system::Module::<T>::block_number(), &memo));
+
+			Accounts::<T>::get(&owner).retain(|x| *x != (claim.clone(), _block_number, memo.clone()));
+			Accounts::<T>::get(&sender).push((claim.clone(), system::Module::<T>::block_number(), memo.clone()));
 
 			// Emit an event that the claim price was set
             Self::deposit_event(RawEvent::ClaimPurchased(sender, claim));
