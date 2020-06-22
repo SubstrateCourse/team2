@@ -260,6 +260,7 @@ impl template::Trait for Runtime {
 // 附加题答案
 parameter_types! {
 	pub const MaxClaimLength: u32 = 256;
+	pub const MaxMemoLength: usize = 256;
 }
 
 impl poe::Trait for Runtime {
@@ -267,6 +268,7 @@ impl poe::Trait for Runtime {
 	
 	// 附加题答案
 	type MaxClaimLength = MaxClaimLength;
+	type MaxMemoLength = MaxMemoLength;
 	type Currency = balances::Module<Runtime>;
 }
 

@@ -9,9 +9,10 @@ use frame_support::{assert_ok, assert_noop};
 fn create_claim_works() {
     new_test_ext().execute_with(|| {
         let claim = vec![0, 1];
+        let memo = vec![0, 1];
 
-        assert_ok!(PoeModule::create_claim(Origin::signed(1), claim.clone()));
-        assert_eq!(Proofs::<Test>::get(&claim), (1, system::Module::<Test>::block_number()));
+        assert_ok!(PoeModule::create_claim(Origin::signed(1), claim.clone(), memo.clone()));
+        assert_eq!(Proofs::<Test>::get(&claim), (1, system::Module::<Test>::block_number(), memo.clone()));
     })
 }
 
@@ -19,10 +20,11 @@ fn create_claim_works() {
 fn create_claim_failed_when_claim_already_exists() {
     new_test_ext().execute_with(|| {
         let claim = vec![0, 1];
-        let _ = PoeModule::create_claim(Origin::signed(1), claim.clone());
+        let memo = vec![0, 1];
+        let _ = PoeModule::create_claim(Origin::signed(1), claim.clone(), memo.clone());
 
         assert_noop!(
-            PoeModule::create_claim(Origin::signed(1), claim.clone()),
+            PoeModule::create_claim(Origin::signed(1), claim.clone(), memo.clone()),
             Error::<Test>::ProofAlreadyExist
         );
     })
@@ -32,9 +34,10 @@ fn create_claim_failed_when_claim_already_exists() {
 fn create_claim_failed_when_claim_is_too_long() {
     new_test_ext().execute_with(|| {
         let claim = vec![0, 1, 2, 3, 4, 5, 6];
+        let memo = vec![0, 1];
 
         assert_noop!(
-            PoeModule::create_claim(Origin::signed(1), claim.clone()),
+            PoeModule::create_claim(Origin::signed(1), claim.clone(), memo.clone()),
             Error::<Test>::ProofTooLong
         );
     })
@@ -45,7 +48,8 @@ fn create_claim_failed_when_claim_is_too_long() {
 fn revoke_claim_works() {
     new_test_ext().execute_with(|| {
         let claim = vec![0, 1];
-        let _ = PoeModule::create_claim(Origin::signed(1), claim.clone());
+        let memo = vec![0, 1];
+        let _ = PoeModule::create_claim(Origin::signed(1), claim.clone(), memo.clone());
 
         assert_ok!(
             PoeModule::revoke_claim(Origin::signed(1), claim.clone())
@@ -69,7 +73,8 @@ fn revoke_claim_failed_when_claim_does_not_exist() {
 fn revoke_claim_failed_with_wrong_owner() {
     new_test_ext().execute_with(|| {
         let claim = vec![0, 1];
-        let _ = PoeModule::create_claim(Origin::signed(1), claim.clone());
+        let memo = vec![0, 1];
+        let _ = PoeModule::create_claim(Origin::signed(1), claim.clone(), memo.clone());
 
         assert_noop!(
             PoeModule::revoke_claim(Origin::signed(2), claim.clone()),
@@ -83,13 +88,14 @@ fn revoke_claim_failed_with_wrong_owner() {
 fn transfer_claim_works() {
     new_test_ext().execute_with(|| {
         let claim = vec![0, 1];
+        let memo = vec![0, 1];
         let dest = 2;
-        let _ = PoeModule::create_claim(Origin::signed(1), claim.clone());
+        let _ = PoeModule::create_claim(Origin::signed(1), claim.clone(), memo.clone());
 
         assert_ok!(
             PoeModule::transfer_claim(Origin::signed(1), claim.clone(), dest)
         );
-        assert_eq!(Proofs::<Test>::get(&claim), (2, system::Module::<Test>::block_number()));
+        assert_eq!(Proofs::<Test>::get(&claim), (2, system::Module::<Test>::block_number(), memo.clone()));
     })
 }
 
@@ -110,8 +116,9 @@ fn transfer_claim_failed_when_claim_does_not_exist() {
 fn transfer_claim_failed_with_wrong_owner() {
     new_test_ext().execute_with(|| {
         let claim = vec![0, 1];
+        let memo = vec![0, 1];
         let dest = 2;
-        let _ = PoeModule::create_claim(Origin::signed(1), claim.clone());
+        let _ = PoeModule::create_claim(Origin::signed(1), claim.clone(), memo.clone());
 
         assert_noop!(
             PoeModule::transfer_claim(Origin::signed(3), claim.clone(), dest),
