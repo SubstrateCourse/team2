@@ -5,6 +5,8 @@ use frame_support::{
 	decl_error, decl_event, decl_module, decl_storage, dispatch, ensure, traits::Get,
 };
 use frame_system::{self as system, ensure_signed};
+
+use pallet_timestamp as timestamp;
 use sp_runtime::traits::StaticLookup;
 use sp_std::prelude::*;
 
@@ -15,7 +17,7 @@ mod mock;
 mod tests;
 
 /// The pallet's configuration trait.
-pub trait Trait: system::Trait {
+pub trait Trait: timestamp::Trait {
 	// Add other types and constants required to configure this pallet.
 
 	/// The overarching event type.
@@ -33,7 +35,7 @@ decl_storage! {
 	// ---------------------------------vvvvvvvvvvvvvv
 	trait Store for Module<T: Trait> as TemplateModule {
 		Proofs get(fn proofs): map hasher(blake2_128_concat) Vec<u8> => (T::AccountId,
-		T::BlockNumber, Vec<u8>);
+		T::Moment, Vec<u8>);
 		AccountToProofHashList get(fn a2phs): map hasher(identity) T::AccountId => Vec<Vec<u8>>;
 	}
 }
@@ -84,7 +86,9 @@ decl_module! {
 			ensure!(T::MaxClaimCommentsLength::get() >= comments.len() as u32,
 			Error::<T>::CommentsTooLong);
 
-			Proofs::<T>::insert(&claim, (sender.clone(), system::Module::<T>::block_number(),
+			let _now = timestamp::Module::<T>::get();
+
+			Proofs::<T>::insert(&claim, (sender.clone(), _now,
 			&comments));
 
 			if AccountToProofHashList::<T>::contains_key(&sender) {
@@ -111,7 +115,7 @@ decl_module! {
 
 			ensure!(Proofs::<T>::contains_key(&claim), Error::<T>::ClaimNotExist);
 
-			let (owner, _block_number, _) = Proofs::<T>::get(&claim);
+			let (owner, _time, _) = Proofs::<T>::get(&claim);
 
 			ensure!(owner == sender, Error::<T>::NotClaimOwner);
 
@@ -138,13 +142,14 @@ decl_module! {
 
 			ensure!(Proofs::<T>::contains_key(&claim), Error::<T>::ClaimNotExist);
 
-			let (owner, _block_number, comments) = Proofs::<T>::get(&claim);
+			let (owner, _now, comments) = Proofs::<T>::get(&claim);
 
 			ensure!(owner == sender, Error::<T>::NotClaimOwner);
 
 			let dest = T::Lookup::lookup(dest)?;
+			let _now = timestamp::Module::<T>::get();
 
-			Proofs::<T>::insert(&claim, (dest, system::Module::<T>::block_number(), comments));
+			Proofs::<T>::insert(&claim, (dest, _now, comments));
 			if AccountToProofHashList::<T>::contains_key(&owner) {
 				let mut vec = AccountToProofHashList::<T>::get(&owner);
 
