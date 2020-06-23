@@ -164,6 +164,7 @@ impl system::Trait for Runtime {
 	/// The weight of the overhead invoked on the block import process, independent of the
 	/// extrinsics included in that block.
 	type BlockExecutionWeight = BlockExecutionWeight;
+
 	/// The base weight of any extrinsic processed by the runtime, independent of the
 	/// logic of that extrinsic. (Signature verification, nonce increment, fee, etc...)
 	type ExtrinsicBaseWeight = ExtrinsicBaseWeight;
@@ -195,10 +196,6 @@ impl aura::Trait for Runtime {
 
 impl kitties::Trait for Runtime {
 
-}
-impl poe::Trait for Runtime {
-    type Event = Event;
-    type MaxClaimLength = MaxClaimLength;
 }
 
 
@@ -265,10 +262,6 @@ parameter_types! {
     pub const MaxClaimLength: u32 = 256;
 }
 
-/// Used for the module template in `./template.rs`
-impl template::Trait for Runtime {
-	type Event = Event;
-}
 
 construct_runtime!(
 	pub enum Runtime where
@@ -284,9 +277,6 @@ construct_runtime!(
 		Balances: balances::{Module, Call, Storage, Config<T>, Event<T>},
 		TransactionPayment: transaction_payment::{Module, Storage},
 		Sudo: sudo::{Module, Call, Config<T>, Storage, Event<T>},
-		// Used for the module template in `./template.rs`
-		TemplateModule: template::{Module, Call, Storage, Event<T>},
-		PoeModule: poe::{Module, Call, Storage, Event<T>},
 		Kitties: kitties::{Module, Call, Storage},
 	}
 );
