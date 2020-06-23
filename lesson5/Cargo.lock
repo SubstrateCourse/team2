@@ -2644,7 +2644,7 @@ dependencies = [
  "pallet-aura",
  "pallet-balances",
  "pallet-grandpa",
- "pallet-kitties",
+ "pallet-poe",
  "pallet-randomness-collective-flip",
  "pallet-sudo",
  "pallet-template",
@@ -2876,13 +2876,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "pallet-kitties"
-version = "0.1.0"
+name = "pallet-poe"
+version = "2.0.0-rc2"
 dependencies = [
  "frame-support",
  "frame-system",
- "pallet-randomness-collective-flip",
  "parity-scale-codec",
+ "sp-core",
  "sp-io",
  "sp-runtime",
  "sp-std",
