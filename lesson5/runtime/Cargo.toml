@@ -147,18 +147,6 @@ package = 'frame-system'
 tag = 'v2.0.0-rc2'
 version = '2.0.0-rc2'
 
-[dependencies.template]
-default-features = false
-package = 'pallet-template'
-path = '../pallets/template'
-version = '2.0.0-rc2'
-
-[dependencies.poe]
-default-features = false
-package = 'pallet-poe'
-path = '../pallets/poe'
-version = '2.0.0-rc2'
-
 [dependencies.kitties]
 default-features = false
 package = 'pallet-kitties'
@@ -206,8 +194,6 @@ std = [
     'system/std',
     'timestamp/std',
     'transaction-payment/std',
-    'template/std',
-    'poe/std',
     'kitties/std',
 ]
 
