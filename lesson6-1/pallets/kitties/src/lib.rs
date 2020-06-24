@@ -1,10 +1,16 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use codec::{Encode, Decode};
-use frame_support::{decl_module, decl_storage, decl_error, ensure, StorageValue, StorageMap, traits::Randomness, Parameter};
-use sp_io::hashing::blake2_128;
+use codec::{Decode, Encode};
+use frame_support::{
+	decl_error, decl_module, decl_storage, ensure, traits::Randomness, Parameter, StorageMap,
+	StorageValue,
+};
 use frame_system::ensure_signed;
-use sp_runtime::{DispatchError, DispatchResult, traits::{AtLeast32Bit, Bounded, Member}};
+use sp_io::hashing::blake2_128;
+use sp_runtime::{
+	traits::{AtLeast32Bit, Bounded, Member},
+	DispatchError, DispatchResult,
+};
 
 #[derive(Encode, Decode)]
 pub struct Kitty(pub [u8; 16]);
@@ -71,7 +77,12 @@ decl_module! {
 		/// Transfer a kitty to new owner
 		#[weight = 0]
 		pub fn transfer(origin, to: T::AccountId, kitty_id: T::KittyIndex) {
-			// 作业
+			let sender = ensure_signed(origin)?;
+			let _ = Self::kitties(kitty_id).ok_or(Error::<T>::InvalidKittyId)?;
+			let _ = Self::owned_kitties((&sender, Some(kitty_id))).ok_or(Error::<T>::RequireOwner)?;
+
+			Self::insert_owned_kitty(&to, kitty_id);
+			<OwnedKitties<T>>::remove(&sender, kitty_id);
 		}
 	}
 }
@@ -135,7 +146,7 @@ impl<T: Trait> OwnedKitties<T> {
 				next: next.next,
 			};
 
-			 Self::write(account, item.next, new_next);
+			Self::write(account, item.next, new_next);
 		}
 	}
 }
@@ -163,7 +174,7 @@ impl<T: Trait> Module<T> {
 	}
 
 	fn insert_owned_kitty(owner: &T::AccountId, kitty_id: T::KittyIndex) {
-		// 作业
+		<OwnedKitties<T>>::append(&owner, kitty_id)
 	}
 
 	fn insert_kitty(owner: &T::AccountId, kitty_id: T::KittyIndex, kitty: Kitty) {
@@ -174,7 +185,11 @@ impl<T: Trait> Module<T> {
 		Self::insert_owned_kitty(owner, kitty_id);
 	}
 
-	fn do_breed(sender: &T::AccountId, kitty_id_1: T::KittyIndex, kitty_id_2: T::KittyIndex) -> DispatchResult {
+	fn do_breed(
+		sender: &T::AccountId,
+		kitty_id_1: T::KittyIndex,
+		kitty_id_2: T::KittyIndex,
+	) -> DispatchResult {
 		let kitty1 = Self::kitties(kitty_id_1).ok_or(Error::<T>::InvalidKittyId)?;
 		let kitty2 = Self::kitties(kitty_id_2).ok_or(Error::<T>::InvalidKittyId)?;
 
@@ -205,12 +220,14 @@ impl<T: Trait> Module<T> {
 mod tests {
 	use super::*;
 
-	use sp_core::H256;
 	use frame_support::{impl_outer_origin, parameter_types, weights::Weight};
-	use sp_runtime::{
-		traits::{BlakeTwo256, IdentityLookup}, testing::Header, Perbill,
-	};
 	use frame_system as system;
+	use sp_core::H256;
+	use sp_runtime::{
+		testing::Header,
+		traits::{BlakeTwo256, IdentityLookup},
+		Perbill,
+	};
 
 	impl_outer_origin! {
 		pub enum Origin for Test {}
@@ -260,7 +277,10 @@ mod tests {
 	// This function basically just builds a genesis storage key/value store according to
 	// our desired mockup.
 	fn new_test_ext() -> sp_io::TestExternalities {
-		system::GenesisConfig::default().build_storage::<Test>().unwrap().into()
+		system::GenesisConfig::default()
+			.build_storage::<Test>()
+			.unwrap()
+			.into()
 	}
 
 	#[test]
@@ -268,59 +288,114 @@ mod tests {
 		new_test_ext().execute_with(|| {
 			OwnedKittiesTest::append(&0, 1);
 
-			assert_eq!(OwnedKittiesTest::get(&(0, None)), Some(KittyLinkedItem {
-				prev: Some(1),
-				next: Some(1),
-			}));
+			assert_eq!(
+				OwnedKittiesTest::get(&(0, None)),
+				Some(KittyLinkedItem {
+					prev: Some(1),
+					next: Some(1),
+				})
+			);
 
-			assert_eq!(OwnedKittiesTest::get(&(0, Some(1))), Some(KittyLinkedItem {
-				prev: None,
-				next: None,
-			}));
+			assert_eq!(
+				OwnedKittiesTest::get(&(0, Some(1))),
+				Some(KittyLinkedItem {
+					prev: None,
+					next: None,
+				})
+			);
 
 			OwnedKittiesTest::append(&0, 2);
 
-			assert_eq!(OwnedKittiesTest::get(&(0, None)), Some(KittyLinkedItem {
-				prev: Some(2),
-				next: Some(1),
-			}));
+			assert_eq!(
+				OwnedKittiesTest::get(&(0, None)),
+				Some(KittyLinkedItem {
+					prev: Some(2),
+					next: Some(1),
+				})
+			);
 
-			assert_eq!(OwnedKittiesTest::get(&(0, Some(1))), Some(KittyLinkedItem {
-				prev: None,
-				next: Some(2),
-			}));
+			assert_eq!(
+				OwnedKittiesTest::get(&(0, Some(1))),
+				Some(KittyLinkedItem {
+					prev: None,
+					next: Some(2),
+				})
+			);
 
-			assert_eq!(OwnedKittiesTest::get(&(0, Some(2))), Some(KittyLinkedItem {
-				prev: Some(1),
-				next: None,
-			}));
+			assert_eq!(
+				OwnedKittiesTest::get(&(0, Some(2))),
+				Some(KittyLinkedItem {
+					prev: Some(1),
+					next: None,
+				})
+			);
 
 			OwnedKittiesTest::append(&0, 3);
 
-			assert_eq!(OwnedKittiesTest::get(&(0, None)), Some(KittyLinkedItem {
-				prev: Some(3),
-				next: Some(1),
-			}));
+			assert_eq!(
+				OwnedKittiesTest::get(&(0, None)),
+				Some(KittyLinkedItem {
+					prev: Some(3),
+					next: Some(1),
+				})
+			);
 
-			assert_eq!(OwnedKittiesTest::get(&(0, Some(1))), Some(KittyLinkedItem {
-				prev: None,
-				next: Some(2),
-			}));
+			assert_eq!(
+				OwnedKittiesTest::get(&(0, Some(1))),
+				Some(KittyLinkedItem {
+					prev: None,
+					next: Some(2),
+				})
+			);
 
-			assert_eq!(OwnedKittiesTest::get(&(0, Some(2))), Some(KittyLinkedItem {
-				prev: Some(1),
-				next: Some(3),
-			}));
+			assert_eq!(
+				OwnedKittiesTest::get(&(0, Some(2))),
+				Some(KittyLinkedItem {
+					prev: Some(1),
+					next: Some(3),
+				})
+			);
 
-			assert_eq!(OwnedKittiesTest::get(&(0, Some(3))), Some(KittyLinkedItem {
-				prev: Some(2),
-				next: None,
-			}));
+			assert_eq!(
+				OwnedKittiesTest::get(&(0, Some(3))),
+				Some(KittyLinkedItem {
+					prev: Some(2),
+					next: None,
+				})
+			);
 		});
 	}
 
 	#[test]
 	fn owned_kitties_can_remove_values() {
-		// 作业
+		new_test_ext().execute_with(|| {
+			OwnedKittiesTest::append(&0, 1);
+
+			assert_eq!(
+				OwnedKittiesTest::get(&(0, None)),
+				Some(KittyLinkedItem {
+					prev: Some(1),
+					next: Some(1),
+				})
+			);
+
+			assert_eq!(
+				OwnedKittiesTest::get(&(0, Some(1))),
+				Some(KittyLinkedItem {
+					prev: None,
+					next: None,
+				})
+			);
+
+			OwnedKittiesTest::remove(&0, 1);
+
+			assert_eq!(
+				OwnedKittiesTest::get(&(0, None)),
+				Some(KittyLinkedItem {
+					prev: None,
+					next: None,
+				})
+			);
+		});
 	}
 }
