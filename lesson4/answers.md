@@ -3,3 +3,7 @@
 <p align="center">
   <img src="./media/add_memo_to_claim.png">
 </p>
+3. Screen capture of question 2:
+<p align="center">
+  <img src="./media/query_user_owned_proofs.png">
+</p>

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Form, Input, Grid } from 'semantic-ui-react';
+import { Form, Input, Grid, Button } from 'semantic-ui-react';
 
 import { useSubstrate } from './substrate-lib';
 import { TxButton } from './substrate-lib/components';
@@ -15,14 +15,16 @@ function Main (props) {
   const [memo, setMemo] = useState('');
   const [owner, setOwner] = useState('');
   const [blockNumber, setBlockNumber] = useState(0);
-  const [formState, setFormState] = useState({ addressTo: null });
-  const { addressTo } = formState;
+  const [addressTo, setFormState] = useState({ addressTo: null });
+  const [accountId, setAccountId] = useState('');
+  const [proofs, setProofs] = useState([]);
 
   useEffect(() => {
     let unsubscribe;
     api.query.poeModule.proofs(digest, (result) => {
       setOwner(result[0].toString());
       setBlockNumber(result[1].toNumber());
+      setMemo(result[3].toString());
     }).then(unsub => {
       unsubscribe = unsub;
     })
@@ -47,44 +49,87 @@ function Main (props) {
     fileReader.readAsArrayBuffer(file);
   };
 
+  const MAX_MEMO_LENGTH = 256;
   const handleMemoChange = (memo) => {
-    const content = Array.from(new Uint8Array(memo))
-      .map((b) => b.toString(16).padStart(2, '0'))
-      .join('');
-    const hash = blake2AsHex(content, 256);
-    setMemo(hash);
+    if (memo.value && memo.value.length > MAX_MEMO_LENGTH) {
+      memo.value = memo.value.substring(0, MAX_MEMO_LENGTH);
+    }
+    setMemo(memo.value);
+  };
+
+  const convertToString = (hex) => {
+    if (hex && hex.length) {
+      return decodeURIComponent(hex.replace(/\s+/g, '').replace(/[0-9a-f]{2}/g, '%$&')).substr(2);
+    }
+    return '';
+  };
+
+  const queryProofs = () => {
+    // unsub && unsub();
+    api.query.poeModule.accounts(accountId, (result) => {
+      setProofs([]);
+      if (result && result.length) {
+        const claimProofs = [];
+        result.forEach((digest) => api.query.poeModule.proofs(digest.toString(), (res) => {
+          var date = new Date(parseInt(res[2]));
+          var datetime = date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+          claimProofs.push({
+            claim: digest.toString(),
+            blockNumber: res[1].toNumber(),
+            createTime: datetime,
+            memo: convertToString(res[3].toString())
+          });
+          setProofs(claimProofs);
+        }));
+      }
+    }).then()
+      .catch(console.error);
   };
 
   return (
     <Grid.Column width={8}>
-      <h1>Proof of Existence - User Info</h1>
+      <h1>Proof of Existence Module</h1>
       <Form>
         <Form.Field>
           <Input
             type='text'
             placeholder='address'
             label="User Address"
-            state="addressTo"
-            onChange={ (_, data) =>
-              setFormState(prev => ({ ...prev, [data.state]: data.value })) }
+            value={accountId}
+            onChange={ (e) => setAccountId(e.target.value) }
           />
         </Form.Field>
+
         <Form.Field style={{ textAlign: 'center' }}>
-          <TxButton
-            label='Query User Doc'
-            type='UNSIGNED-TX'
-            setStatus={setStatus}
-            attrs={{
-              palletRpc: 'poeModule',
-              callable: 'queryUserDoc',
-              inputParams: [addressTo],
-              paramFields: [true]
-            }}
-          />
+          <Button onClick={queryProofs}>Query user owned proofs</Button>
         </Form.Field>
       </Form>
 
-      <h1>Proof of Existence Module</h1>
+      <table class="ui very padded table">
+        <thead className='theads'>
+          <tr>
+            <th >creationTime</th>
+            <th >blockNumber</th>
+            <th >claim</th>
+            <th >memo</th>
+          </tr>
+        </thead>
+        <tbody>
+          {
+            proofs.map((proof, index) => {
+              return (
+                <tr key={ index }>
+                  <td>{proof.createTime}</td>
+                  <td>{proof.blockNumber}</td>
+                  <td>{proof.claim}</td>
+                  <td>{proof.memo}</td>
+                </tr>
+              );
+            })
+          }
+        </tbody>
+      </table>
+
       <Form>
         <Form.Field>
           <Input
@@ -94,13 +139,17 @@ function Main (props) {
             onChange={ (e) => handleFileChosen(e.target.files[0]) }
           />
         </Form.Field>
+
         <Form.Field>
           Comment:
           <Input
             type='input'
             id='memo'
             lable='Memo'
-            onChange={(e) => handleMemoChange(e.value)}
+            value={memo}
+            placeholder='Some note (max 256 chars)'
+            max = {256}
+            onChange={ handleMemoChange }
           />
         </Form.Field>
 
@@ -139,6 +188,7 @@ function Main (props) {
             onChange={ (e) => handleFileChosen(e.target.files[0]) }
           />
         </Form.Field>
+
         <Form.Field>
           <Input
             fluid
@@ -150,6 +200,7 @@ function Main (props) {
               setFormState(prev => ({ ...prev, [data.state]: data.value })) }
           />
         </Form.Field>
+
         <Form.Field style={{ textAlign: 'center' }}>
           <TxButton
             accountPair={accountPair}

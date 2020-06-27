@@ -57,6 +57,13 @@ package = 'pallet-balances'
 tag = 'v2.0.0-rc2'
 version = '2.0.0-rc2'
 
+[dependencies.timestamp]
+default-features = false
+git = 'https://github.com/paritytech/substrate.git'
+package = 'pallet-timestamp'
+tag = 'v2.0.0-rc2'
+version = '2.0.0-rc2'
+
 [features]
 default = ['std']
 std = [

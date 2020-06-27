@@ -4,7 +4,7 @@
 
 use frame_support::{
 	decl_module, decl_storage, decl_event, decl_error, dispatch, ensure,
-	traits::{Get}, traits::Currency, traits::ExistenceRequirement,
+	traits::{Get, Currency, ExistenceRequirement}
 };
 use frame_system::{self as system, ensure_signed};
 use sp_std::prelude::*;
@@ -17,9 +17,9 @@ mod mock;
 mod tests;
 
 /// The pallet's configuration trait.
-pub trait Trait: system::Trait {
+pub trait Trait: system::Trait + timestamp::Trait {
 	// Add other types and constants required to configure this pallet.
-
+	
 	/// The overarching event type.
 	type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
 	type MaxClaimLength: Get<u32>;
@@ -35,9 +35,9 @@ decl_storage! {
 	// storage items are isolated from other pallets.
 	// ---------------------------------vvvvvvvvvvvvvv
 	trait Store for Module<T: Trait> as TemplateModule {
-		Proofs get(fn proofs): map hasher(blake2_128_concat) Vec<u8> => (T::AccountId, T::BlockNumber, Vec<u8>);
+		Proofs get(fn proofs): map hasher(blake2_128_concat) Vec<u8> => (T::AccountId, T::BlockNumber, T::Moment, Vec<u8>);
 		Prices get(fn prices): map hasher(blake2_128_concat) Vec<u8> => BalanceOf<T>;
-		Accounts get(fn accounts): map hasher(blake2_128_concat) T::AccountId => Vec<(Vec<u8>, T::BlockNumber, Vec<u8>)>;
+		Accounts get(fn accounts): map hasher(blake2_128_concat) T::AccountId => Vec<Vec<u8>>;
 	}
 }
 
@@ -89,9 +89,21 @@ decl_module! {
 
 			ensure!(T::MaxMemoLength::get() >= memo.len(), Error::<T>::MemoTooLong);
 
-			Proofs::<T>::insert(&claim, (sender.clone(), system::Module::<T>::block_number(), &memo));
+			Proofs::<T>::insert(&claim, (sender.clone(), system::Module::<T>::block_number(), timestamp::Module::<T>::now(), &memo));
 
-			Accounts::<T>::get(&sender).push((claim.clone(), system::Module::<T>::block_number(), memo.clone()));
+			let mut vec = Vec::<Vec<u8>>::new();
+
+			if Accounts::<T>::contains_key(&sender) {
+                vec = Accounts::<T>::get(&sender);
+
+                if !vec.contains(&claim) {
+                	vec.insert(0, claim.clone());
+                }
+            } else {
+                vec.push(claim.clone());
+            }
+
+            Accounts::<T>::insert(&sender, vec);
 
 			Self::deposit_event(RawEvent::ClaimCreated(sender, claim));
 
@@ -104,7 +116,7 @@ decl_module! {
 
 			ensure!(Proofs::<T>::contains_key(&claim), Error::<T>::ClaimNotExist);
 
-			let (owner, _block_number, _) = Proofs::<T>::get(&claim);
+			let (owner, _block_number, _, _) = Proofs::<T>::get(&claim);
 
 			ensure!(owner == sender, Error::<T>::NotClaimOwner);
 
@@ -125,16 +137,32 @@ decl_module! {
 
 			ensure!(Proofs::<T>::contains_key(&claim), Error::<T>::ClaimNotExist);
 
-			let (owner, _block_number, memo) = Proofs::<T>::get(&claim);
+			let (owner, _block_number, _time_stamp, memo) = Proofs::<T>::get(&claim);
 
 			ensure!(owner == sender, Error::<T>::NotClaimOwner);
 
 			let dest = T::Lookup::lookup(dest)?;
 
-			Proofs::<T>::insert(&claim, (dest.clone(), system::Module::<T>::block_number(), &memo));
+			Proofs::<T>::insert(&claim, (dest.clone(), system::Module::<T>::block_number(), timestamp::Module::<T>::now(), &memo));
 
-			Accounts::<T>::get(&sender).retain(|x| *x != (claim.clone(), _block_number, memo.clone()));
-			Accounts::<T>::get(&dest).push((claim.clone(), system::Module::<T>::block_number(), memo.clone()));
+			Accounts::<T>::get(&sender).retain(|x| *x != claim);
+			if Self::accounts(&sender).is_empty() {
+				Accounts::<T>::remove(sender.clone());
+			}
+
+			let mut vec = Vec::<Vec<u8>>::new();
+
+			if Accounts::<T>::contains_key(&dest) {
+                vec = Accounts::<T>::get(&dest);
+
+                if !vec.contains(&claim) {
+                	vec.insert(0, claim.clone());
+                }
+            } else {
+                vec.push(claim.clone());
+            }
+
+            Accounts::<T>::insert(&dest, vec);
 
 			// Emit an event that the claim was transfered
             Self::deposit_event(RawEvent::ClaimTransfered(sender, dest, claim));
@@ -148,7 +176,7 @@ decl_module! {
 
 			ensure!(Proofs::<T>::contains_key(&claim), Error::<T>::ClaimNotExist);
 
-			let (owner, _block_number, _) = Proofs::<T>::get(&claim);
+			let (owner, _block_number, _, _) = Proofs::<T>::get(&claim);
 
 			ensure!(owner == sender, Error::<T>::NotClaimOwner);
 
@@ -166,7 +194,7 @@ decl_module! {
 
 			ensure!(Proofs::<T>::contains_key(&claim), Error::<T>::ClaimNotExist);
 
-			let (owner, _block_number, memo) = Proofs::<T>::get(&claim);
+			let (owner, _block_number, _time_stamp, memo) = Proofs::<T>::get(&claim);
 
 			ensure!(owner != sender, Error::<T>::CannotBuySelfOwnedClaim);
 
@@ -178,10 +206,26 @@ decl_module! {
 
 			T::Currency::transfer(&sender, &owner, proof_price, ExistenceRequirement::KeepAlive)?;
 
-			Proofs::<T>::insert(&claim, (sender.clone(), system::Module::<T>::block_number(), &memo));
+			Proofs::<T>::insert(&claim, (sender.clone(), system::Module::<T>::block_number(), timestamp::Module::<T>::now(), &memo));
 
-			Accounts::<T>::get(&owner).retain(|x| *x != (claim.clone(), _block_number, memo.clone()));
-			Accounts::<T>::get(&sender).push((claim.clone(), system::Module::<T>::block_number(), memo.clone()));
+			Accounts::<T>::get(&owner).retain(|x| *x != claim);
+			if Self::accounts(&owner).is_empty() {
+				Accounts::<T>::remove(owner.clone());
+			}
+
+			let mut vec = Vec::<Vec<u8>>::new();
+
+			if Accounts::<T>::contains_key(&sender) {
+                vec = Accounts::<T>::get(&sender);
+
+                if !vec.contains(&claim) {
+                	vec.insert(0, claim.clone());
+                }
+            } else {
+                vec.push(claim.clone());
+            }
+
+            Accounts::<T>::insert(&sender, vec);
 
 			// Emit an event that the claim price was set
             Self::deposit_event(RawEvent::ClaimPurchased(sender, claim));
