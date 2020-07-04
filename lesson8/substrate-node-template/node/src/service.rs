@@ -90,6 +90,7 @@ pub fn new_full(config: Configuration) -> Result<impl AbstractService, ServiceEr
 	let force_authoring = config.force_authoring;
 	let name = config.network.node_name.clone();
 	let disable_grandpa = config.disable_grandpa;
+	let dev_seed = config.dev_key_seed.clone();
 
 	let (builder, mut import_setup, inherent_data_providers) = new_full_start!(config);
 
@@ -104,6 +105,18 @@ pub fn new_full(config: Configuration) -> Result<impl AbstractService, ServiceEr
 			Ok(Arc::new(GrandpaFinalityProofProvider::new(backend, provider)) as _)
 		})?
 		.build()?;
+
+	// Initialize seed for signing transaction using off-chain workers
+    if let Some(seed) = dev_seed {
+        service
+            .keystore()
+            .write()
+            .insert_ephemeral_from_seed_by_type::<runtime::node-template-runtime::crypto::Pair>(
+                &seed,
+                runtime::node-template-runtime::KEY_TYPE,
+            )
+            .expect("Dev Seed should always succeed.");
+    }
 
 	if role.is_authority() {
 		let proposer = sc_basic_authorship::ProposerFactory::new(
