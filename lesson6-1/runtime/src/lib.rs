@@ -257,7 +257,7 @@ impl template::Trait for Runtime {
 	type Event = Event;
 }
 
-impl pallet_kitties::Trait for Runtime {
+impl kitties::Trait for Runtime {
 	type KittyIndex = u32;
 }
 
@@ -278,7 +278,7 @@ construct_runtime!(
 		// Used for the module template in `./template.rs`
 		TemplateModule: template::{Module, Call, Storage, Event<T>},
 		// Substrate Kitties module
-		Kitties: pallet_kitties::{Module, Storage, Call},
+		Kitties: kitties::{Module, Storage, Call},
 	}
 );
 
