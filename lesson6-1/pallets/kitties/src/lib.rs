@@ -72,6 +72,15 @@ decl_module! {
 		#[weight = 0]
 		pub fn transfer(origin, to: T::AccountId, kitty_id: T::KittyIndex) {
 			// 作业
+
+			let sender = ensure_signed(origin)?;
+
+			//确认消息发Owned_kitties送者是不是kitty所有者，是的话，才进行下一步转移操作
+			ensure!(OwnedKitties::<T>::contains_key(&(sender.clone(), Some(kitty_id))),Error::<T>::RequireOwner);
+
+			OwnedKitties::<T>::remove(&sender, kitty_id);
+			OwnedKitties::<T>::append(&to, kitty_id);
+
 		}
 	}
 }
@@ -164,6 +173,8 @@ impl<T: Trait> Module<T> {
 
 	fn insert_owned_kitty(owner: &T::AccountId, kitty_id: T::KittyIndex) {
 		// 作业
+		//然后append到后面去
+		OwnedKitties::<T>::append(&owner, kitty_id);
 	}
 
 	fn insert_kitty(owner: &T::AccountId, kitty_id: T::KittyIndex, kitty: Kitty) {
@@ -322,5 +333,49 @@ mod tests {
 	#[test]
 	fn owned_kitties_can_remove_values() {
 		// 作业
-	}
+
+		new_test_ext().execute_with(|| {
+				
+			//先拼进去3个节点
+			OwnedKittiesTest::append(&0, 1);
+			OwnedKittiesTest::append(&0, 2);
+			OwnedKittiesTest::append(&0, 3);
+
+			//删除节点2
+			OwnedKittiesTest::remove(&0, 2);
+			assert_eq!(OwnedKittiesTest::get(&(0, Some(3))), Some(KittyLinkedItem {
+				prev: Some(1),
+				next: None,
+			}));
+
+			assert_eq!(OwnedKittiesTest::get(&(0, Some(1))), Some(KittyLinkedItem {
+				prev: None,
+				next: Some(3),
+			}));
+
+
+			//删除节点1
+			OwnedKittiesTest::remove(&0, 1);
+
+			assert_eq!(OwnedKittiesTest::get(&(0, Some(3))), Some(KittyLinkedItem {
+				prev: None,
+				next: None,
+			}));
+
+			assert_eq!(OwnedKittiesTest::get(&(0, None)), Some(KittyLinkedItem {
+				prev: Some(3),
+				next: Some(3),
+			}));
+
+
+			//删除节点3
+			OwnedKittiesTest::remove(&0, 3);
+
+			assert_eq!(OwnedKittiesTest::get(&(0, None)), Some(KittyLinkedItem {
+				prev: None,
+				next: None,
+			}));
+		
+	});
+}
 }
