@@ -72,6 +72,8 @@ decl_module! {
 		#[weight = 0]
 		pub fn transfer(origin, to: T::AccountId, kitty_id: T::KittyIndex) {
 			// 作业
+			let sender = ensure_signed(origin)?;
+			Self::do_transfer(&sender, &to, kitty_id)?;
 		}
 	}
 }
@@ -164,6 +166,7 @@ impl<T: Trait> Module<T> {
 
 	fn insert_owned_kitty(owner: &T::AccountId, kitty_id: T::KittyIndex) {
 		// 作业
+		OwnedKitties::<T>::append(owner, kitty_id);
 	}
 
 	fn insert_kitty(owner: &T::AccountId, kitty_id: T::KittyIndex, kitty: Kitty) {
@@ -172,6 +175,18 @@ impl<T: Trait> Module<T> {
 		KittiesCount::<T>::put(kitty_id + 1.into());
 
 		Self::insert_owned_kitty(owner, kitty_id);
+	}
+
+	fn do_transfer(sender: &T::AccountId, to: &T::AccountId, kitty_id: T::KittyIndex) -> DispatchResult {
+		// kitty exists
+		ensure!(Kitties::<T>::contains_key(kitty_id), Error::<T>::InvalidKittyId);
+		//ownerkitties exists
+		ensure!(OwnedKitties::<T>::contains_key((&sender, Some(kitty_id))), Error::<T>::RequireOwner);
+		//remove then append
+		OwnedKitties::<T>::remove(&sender, kitty_id);
+		OwnedKitties::<T>::append(&to, kitty_id);
+
+		Ok(())
 	}
 
 	fn do_breed(sender: &T::AccountId, kitty_id_1: T::KittyIndex, kitty_id_2: T::KittyIndex) -> DispatchResult {
@@ -322,5 +337,49 @@ mod tests {
 	#[test]
 	fn owned_kitties_can_remove_values() {
 		// 作业
+		new_test_ext().execute_with(|| {
+			OwnedKittiesTest::append(&0, 1);
+			OwnedKittiesTest::append(&0, 2);
+			OwnedKittiesTest::append(&0, 3);
+
+			OwnedKittiesTest::remove(&0, 2);
+
+			assert_eq!(OwnedKittiesTest::get(&(0, None)), Some(KittyLinkedItem {
+				prev: Some(3),
+				next: Some(1),
+			}));
+
+			assert_eq!(OwnedKittiesTest::get(&(0, Some(1))), Some(KittyLinkedItem {
+				prev: None,
+				next: Some(3),
+			}));
+
+			assert_eq!(OwnedKittiesTest::get(&(0, Some(3))), Some(KittyLinkedItem {
+				prev: Some(1),
+				next: None,
+			}));
+
+
+			OwnedKittiesTest::remove(&0, 3);
+
+			assert_eq!(OwnedKittiesTest::get(&(0, None)), Some(KittyLinkedItem {
+				prev: Some(1),
+				next: Some(1),
+			}));
+
+			assert_eq!(OwnedKittiesTest::get(&(0, Some(1))), Some(KittyLinkedItem {
+				prev: None,
+				next: None,
+			}));
+
+
+			OwnedKittiesTest::remove(&0, 1);
+
+			assert_eq!(OwnedKittiesTest::get(&(0, None)), Some(KittyLinkedItem {
+				prev: None,
+				next: None,
+			}));
+		});
+
 	}
 }
