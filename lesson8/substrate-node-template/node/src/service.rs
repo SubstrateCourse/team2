@@ -91,6 +91,9 @@ pub fn new_full(config: Configuration) -> Result<impl AbstractService, ServiceEr
 	let name = config.network.node_name.clone();
 	let disable_grandpa = config.disable_grandpa;
 
+	///这个是用来记录template模块的app key的
+	let dev_seed = config.dev_key_seed.clone();
+
 	let (builder, mut import_setup, inherent_data_providers) = new_full_start!(config);
 
 	let (block_import, grandpa_link) =
@@ -186,6 +189,23 @@ pub fn new_full(config: Configuration) -> Result<impl AbstractService, ServiceEr
 			&inherent_data_providers,
 			service.network(),
 		)?;
+	}
+
+
+	///这是手动添加的，关于app key本地存储的模块
+	// Initialize seed for signing transaction using off-chain workers
+	#[cfg(feature = "ocw")]
+	{
+		if let Some(seed) = dev_seed {
+			service
+				.keystore()
+				.write()
+				.insert_ephemeral_from_seed_by_type::<node_template_runtime::template::crypto::Pair>(
+					&seed,
+					node_template_runtime::template::KEY_TYPE,
+				)
+				.expect("Dev Seed should always succeed.");
+		}
 	}
 
 	Ok(service)

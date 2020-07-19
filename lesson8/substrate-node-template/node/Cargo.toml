@@ -114,3 +114,6 @@ version = '2.0.0-rc2'
 
 [[bin]]
 name = 'node-template'
+
+[features]
+ocw = []
