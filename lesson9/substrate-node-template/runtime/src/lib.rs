@@ -254,7 +254,9 @@ impl sudo::Trait for Runtime {
 
 /// Used for the module template in `./template.rs`
 impl template::Trait for Runtime {
+	type Call = Call;
 	type Event = Event;
+	type UnsignedPriority = UnsignedPriority;
 }
 
 construct_runtime!(
