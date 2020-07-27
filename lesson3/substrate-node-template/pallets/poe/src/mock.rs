@@ -50,7 +50,7 @@ impl system::Trait for Test {
 }
 
 parameter_types! {
-	pub const MaxClaimLength: u32 = 6;
+	pub const MaxClaimLength: u32 = 10;
 }
 impl Trait for Test {
 	type Event = ();

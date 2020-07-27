@@ -5,6 +5,22 @@
 注：
 
 1. 提交源代码，运行`cargo test`的测试结果截图，前端UI的截图；
+
+《1》测试通过截图
+![cargo_test_ok_snapshot](images/cargo_test_ok_snapshot.jpg)
+
+《2》创建存证成功前端UI截图
+![create_claim_front_end_snapshot](images/create_claim_front_end_snapshot.jpg)
+
+《3》撤销存证成功前端UI截图
+![revoke_claim_front_end_snapshot](images/revoke_claim_front_end_snapshot.jpg)
+
+《4》转移存证成功前端UI截图
+![transfer_successfully_snapshot](images/transfer_successfully_snapshot.jpg)
+
+
+
+
 2. 测试应覆盖所有的业务逻辑，如不同的错误场景，以及一切正常的情况下，检查存储的数据是不是预期的那样。
 3. 附加题不是必答的，但可以酌情加分。
 4. 代码修改在本目录 substrate-node-template 和 substrate-front-end-template 的程序文件里。

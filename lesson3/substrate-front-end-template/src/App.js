@@ -15,6 +15,7 @@ import NodeInfo from './NodeInfo';
 import TemplateModule from './TemplateModule';
 import Transfer from './Transfer';
 import Upgrade from './Upgrade';
+import PoeModule from './PoeModule';
 
 function Main () {
   const [accountAddress, setAccountAddress] = useState(null);
@@ -67,6 +68,9 @@ function Main () {
           </Grid.Row>
           <Grid.Row>
             <TemplateModule accountPair={accountPair} />
+          </Grid.Row>
+          <Grid.Row>
+            <PoeModule accountPair={accountPair} />
           </Grid.Row>
         </Grid>
         <DeveloperConsole />
